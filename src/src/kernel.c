@@ -1,53 +1,47 @@
 /*
-
-kernel.c - Bare-metal Kernel Entry Point for MT6737
-*/
+ * kernel.c - Bare-metal C entry point for MT6737
+ */
 
 #include <stdint.h>
 
-/* Volatile register access helper /
-#define REG32(addr) (((volatile uint32_t *)(addr)))
+/* MediaTek MT6737 UART0 Base Address */
+#define MT6737_UART0_BASE 0x11002000
 
-/*
+#define UART_THR          (*(volatile uint32_t *)(MT6737_UART0_BASE + 0x00))
+#define UART_LSR          (*(volatile uint32_t *)(MT6737_UART0_BASE + 0x14))
+#define UART_LSR_THRE     (1 << 5)
 
-MT6737 UART Registers (Base: 0x11002000 - UART0)
-
-Note: Memory mapping depends on MMU state / physical mapping
-/
-#define UART0_BASE       0x11002000
-#define UART_THR         (UART0_BASE + 0x00) / Transmit Holding Register /
-#define UART_LSR         (UART0_BASE + 0x14) / Line Status Register /
-#define UART_LSR_THRE    (1 << 5)            / Transmit Data Request */
-
-/* Simple UART putc implementation for debug output /
+/**
+ * Send a single character over UART0
+ */
 void uart_putc(char c) {
-/ Wait until THR is empty */
-while (!(REG32(UART_LSR) & UART_LSR_THRE));
-REG32(UART_THR) = c;
+    while (!(UART_LSR & UART_LSR_THRE));
+    UART_THR = c;
 }
 
+/**
+ * Send a null-terminated string over UART0
+ */
 void uart_puts(const char *str) {
-while (*str) {
-if (*str == '\n') {
-uart_putc('\r');
-}
-uart_putc(*str++);
-}
+    while (*str) {
+        if (*str == '\n') {
+            uart_putc('\r');
+        }
+        uart_putc(*str++);
+    }
 }
 
-/* Kernel Entry Point called from boot.s /
+/**
+ * Main kernel entry point called from boot.s
+ */
 void kernel_main(void) {
-/ Send early boot banner via UART */
-uart_puts("\n====================================\n");
-uart_puts("   MT6737 Bare-Metal OS Kernel      \n");
-uart_puts("   Target: Ulefone Note 8P          \n");
-uart_puts("====================================\n\n");
+    uart_puts("\n========================================\n");
+    uart_puts("   TurusOS / MT6737 Bare-Metal Kernel   \n");
+    uart_puts("   Running on ARM Cortex-A53 (ARMv7-A)  \n");
+    uart_puts("========================================\n\n");
 
-/* Main Kernel Loop */
-while (1) {
-    /* Idle loop */
-    asm volatile("wfi");
-}
-
-
+    /* Infinite loop / Low-power state */
+    while (1) {
+        __asm__ volatile("wfi");
+    }
 }
